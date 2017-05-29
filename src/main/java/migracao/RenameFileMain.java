@@ -4,55 +4,57 @@ import java.io.File;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
-import migracao.dao.MinutaDAO;
+import org.apache.commons.io.FileUtils;
+
+import migracao.dao.AtoDAO;
 import migracao.domain.ETipoAto;
-import migracao.util.FileUtil;
-import migracao.util.RTFUtil;
 
 public class RenameFileMain {
-
+	
 	public static void main(String[] args) {
-		MinutaDAO minutaDAO = new MinutaDAO();
-		ResultSet consulta = minutaDAO.getMinutas(ETipoAto.ATO04, null);
+		ETipoAto tipo = ETipoAto.ATO04;
+		StringBuilder path = new StringBuilder("C:/arquivos/migracao/").append(tipo.name());
+		
+		String pathOrigem = path.toString() + File.separator + "odt_template" + File.separator;
 
-		String fullDir;
-
-		StringBuilder path = new StringBuilder("C:\\arquivos\\migracao\\").append(ETipoAto.ATO04.name());
+		String pathDestino = path.toString() + File.separator + "odt_final" + File.separator;
+		
+		List<String> erros = new ArrayList<String>();
+		
+		if (!new File(pathDestino).exists()) {
+			(new File(pathDestino)).mkdirs();
+		}
+		
+		AtoDAO atoDAO = new AtoDAO();
+		ResultSet consulta = atoDAO.getAtos(tipo);
 
 		try {
 			while (consulta.next()) {
+				String nmArquivoOrigem = String.format("%08d", consulta.getLong("nr_protocolo_legado"));
 				
-				// SALVAR O ZIP
-				byte[] zipFile = consulta.getBytes("Texto");
-
-				StringBuilder fileName = new StringBuilder(consulta.getString("Prot")).append("_")
-						.append(consulta.getString("Tipo"));
-
-				String fileNameZip = fileName.toString();
+				System.out.println("==>" + nmArquivoOrigem);
 				
-				System.out.println("ARQUIVO: "+ fileNameZip);
-				
-				fullDir = path.toString() + File.separator + consulta.getString("Prot");
-
-				FileUtil.createFileFromByteArray(zipFile, fileNameZip, fullDir);
-
-				// UNZIP
-				String fileNameRTF = fileName.toString() + ".RTF";
-
-				FileUtil.decompressGzipFile(fullDir + File.separator + fileNameZip,
-						fullDir + File.separator + fileNameRTF);
-
-				// CONVERTER PRA ODT
-
-				// MERGE
+				File origem = new File(pathOrigem+nmArquivoOrigem+".odt");
+				if(origem.exists()) {
+					String nmArquivoDestino = String.format("%07d", consulta.getLong("id_ato_protocolado"));
+					
+					FileUtils.copyFile(origem, new File(pathDestino+nmArquivoDestino+".odt"));
+				} else {
+					erros.add(consulta.getString("nr_protocolo_legado"));
+				}
 			}
-
-//			RTFUtil.mergeRTF(new File("C:\\arquivos\\migracao\\ATO01\\00002792\\00002792_T.RTF"),
-//					new File("C:\\arquivos\\migracao\\ATO01\\00002792\\00002792_1.RTF"),
-//					new File("C:\\arquivos\\migracao\\ATO01\\00002792\\00002792.RTF"));
-
+			
+			System.out.println("======================= E R R O S =======================");
+			for(String prot : erros) {
+				System.out.println(prot);
+			}
+			
 		} catch (SQLException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}

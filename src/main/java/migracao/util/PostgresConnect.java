@@ -13,7 +13,7 @@ public final class PostgresConnect {
     public static PostgresConnect db;
     
     private PostgresConnect() {
-        String url= "jdbc:postgresql://localhost:5432/";
+        String url= "jdbc:postgresql://192.168.1.26:5432/";
         String dbName = "2-SSA-MIGRACAO";
         String driver = "org.postgresql.Driver";
         String userName = "postgres";
